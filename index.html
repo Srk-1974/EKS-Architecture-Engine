@@ -1,0 +1,931 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bhadradri Technologies | EKS Terraform Generator</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Fira+Code:wght@400;500&display=swap"
+        rel="stylesheet">
+    <style>
+        :root {
+            --primary: #2563eb;
+            --primary-dark: #1e40af;
+            --accent: #60a5fa;
+            --slate-900: #0f172a;
+            --slate-800: #1e293b;
+            --slate-100: #f1f5f9;
+            --slate-50: #f8fafc;
+        }
+
+        body {
+            font-family: 'Outfit', sans-serif;
+            background-color: #ffffff;
+            color: #1e293b;
+            overflow-x: hidden;
+        }
+
+        .code-font {
+            font-family: 'Fira Code', monospace;
+        }
+
+        .premium-gradient {
+            background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%);
+        }
+
+        .premium-text-gradient {
+            background: linear-gradient(135deg, #2563eb 0%, #7c3aed 100%);
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .glass-card {
+            background: rgba(255, 255, 255, 0.8);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(0, 0, 0, 0.05);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.08);
+        }
+
+        .glass-input {
+            background: rgba(248, 250, 252, 0.8);
+            border: 1px solid rgba(0, 0, 0, 0.08);
+            color: #0f172a;
+            transition: all 0.3s ease;
+        }
+
+        .glass-input:focus {
+            background: #ffffff;
+            border-color: #3b82f6;
+            box-shadow: 0 0 20px rgba(59, 130, 246, 0.1);
+        }
+
+        .hero-bg {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+            background: radial-gradient(circle at 0% 0%, rgba(37, 99, 235, 0.05) 0%, transparent 50%),
+                radial-gradient(circle at 100% 100%, rgba(139, 92, 246, 0.05) 0%, transparent 50%),
+                #ffffff;
+        }
+
+        .grid-pattern {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+            background-image: linear-gradient(rgba(0, 0, 0, 0.02) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(0, 0, 0, 0.02) 1px, transparent 1px);
+            background-size: 50px 50px;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .animate-fade-in {
+            animation: fadeIn 0.8s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+        }
+
+        /* Syntax Highlighting - Light Theme Adjusted */
+        .syntax-keyword {
+            color: #d73a49;
+            font-weight: 500;
+        }
+
+        .syntax-string {
+            color: #032f62;
+        }
+
+        .syntax-comment {
+            color: #6a737d;
+            font-style: italic;
+        }
+
+        .syntax-variable {
+            color: #e36209;
+        }
+
+        .syntax-resource {
+            color: #005cc5;
+        }
+
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: #f8fafc;
+        }
+
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #e2e8f0;
+            border-radius: 4px;
+        }
+
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+            background: #cbd5e1;
+        }
+
+        .step-inactive {
+            opacity: 0.4;
+            filter: grayscale(1);
+        }
+
+        .step-active {
+            opacity: 1;
+            filter: none;
+            transform: scale(1.05);
+        }
+
+        /* Chatbot Animations */
+        @keyframes slideUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px) scale(0.95);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+            }
+        }
+
+        .animate-slide-up {
+            animation: slideUp 0.4s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+        }
+
+        .chat-bubble-user {
+            background: #2563eb;
+            color: white;
+            border-bottom-right-radius: 4px;
+        }
+
+        .chat-bubble-bot {
+            background: #f1f5f9;
+            color: #1e293b;
+            border-bottom-left-radius: 4px;
+        }
+    </style>
+</head>
+
+<body class="min-h-screen">
+    <div class="hero-bg"></div>
+    <div class="grid-pattern"></div>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect, useCallback, useMemo } = React;
+
+        // Validation utilities
+        const validators = {
+            projectName: (value) => {
+                if (!value) return "Project name is required";
+                if (!/^[a-z][a-z0-9-]{2,62}$/.test(value))
+                    return "Lower-case letters, numbers, and hyphens (3-63 chars)";
+                return null;
+            },
+            clusterName: (value) => {
+                if (!value) return "Cluster name is required";
+                if (!/^[a-zA-Z][a-zA-Z0-9-]{1,100}$/.test(value))
+                    return "Letters, numbers, and hyphens (2-100 chars)";
+                return null;
+            },
+            cidr: (value) => {
+                if (!value) return "CIDR block is required";
+                const cidrRegex = /^(\d{1,3}\.){3}\d{1,3}\/\d{1,2}$/;
+                if (!cidrRegex.test(value)) return "Format: 10.0.0.0/16";
+
+                const [ip, mask] = value.split('/');
+                const maskNum = parseInt(mask);
+                if (maskNum < 16 || maskNum > 24) return "Mask must be between /16 and /24";
+
+                const parts = ip.split('.').map(Number);
+                if (parts.some(p => p > 255)) return "Invalid IP";
+
+                const isPrivate = (
+                    (parts[0] === 10) ||
+                    (parts[0] === 172 && parts[1] >= 16 && parts[1] <= 31) ||
+                    (parts[0] === 192 && parts[1] === 168)
+                );
+                if (!isPrivate) return "Must use private IP range";
+
+                return null;
+            },
+            nodeCount: (value, type, config) => {
+                const num = parseInt(value);
+                if (isNaN(num) || num < 0) return "Positive number required";
+                if (type === 'max' && num > 100) return "Max 100 nodes";
+                return null;
+            }
+        };
+
+        const calculateSubnets = (vpcCidr, azCount) => {
+            try {
+                const [ip, mask] = vpcCidr.split('/');
+                const vpcMask = parseInt(mask);
+                const newBits = Math.ceil(Math.log2(azCount * 2));
+                const subnetMask = vpcMask + newBits;
+
+                if (subnetMask > 28) return null;
+
+                const ipParts = ip.split('.').map(Number);
+                const subnetSize = Math.pow(2, 32 - subnetMask);
+                const currentIpInt = (ipParts[0] << 24) + (ipParts[1] << 16) + (ipParts[2] << 8) + ipParts[3];
+
+                const subnets = [];
+                for (let i = 0; i < azCount * 2; i++) {
+                    const subnetIp = currentIpInt + (i * subnetSize);
+                    subnets.push(`${(subnetIp >>> 24) & 255}.${(subnetIp >>> 16) & 255}.${(subnetIp >>> 8) & 255}.${subnetIp & 255}/${subnetMask}`);
+                }
+
+                return {
+                    private: subnets.filter((_, i) => i % 2 === 0),
+                    public: subnets.filter((_, i) => i % 2 === 1)
+                };
+            } catch (e) { return null; }
+        };
+
+        const generateTerraform = (config) => {
+            const clusterName = `${config.projectName}-${config.environment}`;
+
+            return {
+                'main.tf': `# Generated by Bhadradri Technologies EKS Generator
+# Infrastructure as Code solution for ${config.projectName}
+
+terraform {
+  required_version = ">= 1.0"
+  
+  backend "s3" {
+    bucket         = "terraform-state-${config.projectName}"
+    key            = "${config.projectName}/${config.environment}/terraform.tfstate"
+    region         = "${config.region}"
+    encrypt        = true
+    dynamodb_table = "terraform-locks"
+  }
+}
+
+provider "aws" {
+  region = var.region
+  
+  default_tags {
+    tags = {
+      Project     = var.project_name
+      Environment = var.environment
+      Provisioner = "Bhadradri-Technologies"
+    }
+  }
+}
+
+module "vpc" {
+  source  = "terraform-aws-modules/vpc/aws"
+  version = "~> 5.0"
+
+  name = "\${var.project_name}-\${var.environment}"
+  cidr = var.vpc_cidr
+
+  azs             = var.availability_zones
+  private_subnets = var.private_subnets
+  public_subnets  = var.public_subnets
+
+  enable_nat_gateway     = var.enable_nat_gateway
+  single_nat_gateway     = var.single_nat_gateway
+  
+  enable_dns_hostnames = true
+  enable_dns_support   = true
+
+  public_subnet_tags = {
+    "kubernetes.io/role/elb"                      = "1"
+    "kubernetes.io/cluster/${clusterName}" = "shared"
+  }
+
+  private_subnet_tags = {
+    "kubernetes.io/role/internal-elb"             = "1"
+    "kubernetes.io/cluster/${clusterName}" = "shared"
+  }
+}
+
+module "eks" {
+  source  = "terraform-aws-modules/eks/aws"
+  version = "~> 19.15.0"
+
+  cluster_name    = "${clusterName}"
+  cluster_version = var.kubernetes_version
+
+  cluster_endpoint_public_access  = true
+  vpc_id                          = module.vpc.vpc_id
+  subnet_ids                      = module.vpc.private_subnets
+
+  eks_managed_node_groups = {
+${config.nodeGroups.map(ng => `    ${ng.name} = {
+      name           = "${ng.name}"
+      instance_types = ${JSON.stringify(ng.instanceTypes)}
+      min_size       = ${ng.minSize}
+      max_size       = ${ng.maxSize}
+      desired_size   = ${ng.desiredSize}
+      capacity_type  = "${ng.capacityType}"
+      
+      block_device_mappings = {
+        xvda = {
+          device_name = "/dev/xvda"
+          ebs = {
+            volume_size = ${ng.diskSize}
+            volume_type = "gp3"
+          }
+        }
+      }
+    }`).join('\n')}
+  }
+}`,
+                'variables.tf': `variable "region" { default = "${config.region}" }
+variable "project_name" { default = "${config.projectName}" }
+variable "environment" { default = "${config.environment}" }
+variable "vpc_cidr" { default = "${config.vpcCidr}" }
+variable "availability_zones" { default = ${JSON.stringify(config.availabilityZones)} }
+variable "private_subnets" { default = ${JSON.stringify(config.privateSubnets)} }
+variable "public_subnets" { default = ${JSON.stringify(config.publicSubnets)} }
+variable "enable_nat_gateway" { default = ${config.enableNatGateway} }
+variable "single_nat_gateway" { default = ${config.singleNatGateway} }
+variable "kubernetes_version" { default = "${config.kubernetesVersion}" }`,
+                'outputs.tf': `output "cluster_endpoint" { value = module.eks.cluster_endpoint }
+output "cluster_name" { value = module.eks.cluster_name }
+output "vpc_id" { value = module.vpc.vpc_id }`,
+                'versions.tf': `terraform {
+  required_providers {
+    aws = { source = "hashicorp/aws"; version = "~> 5.0" }
+    kubernetes = { source = "hashicorp/kubernetes"; version = "~> 2.23" }
+  }
+}`
+            };
+        };
+
+        const highlightHCL = (code) => {
+            return code
+                .replace(/(terraform|provider|module|variable|output|resource|data|locals)/g, '<span class="syntax-keyword">$1</span>')
+                .replace(/"(.*?)"/g, '<span class="syntax-string">"$1"</span>')
+                .replace(/(#.*$)/gm, '<span class="syntax-comment">$1</span>')
+                .replace(/\$\{/g, '<span class="syntax-variable">${</span>')
+                .replace(/module\.|var\.|local\./g, '<span class="syntax-resource">$&</span>');
+        };
+
+        // UI Components
+        const Input = ({ label, value, onChange, error, placeholder, type = "text", helper }) => (
+            <div className="mb-6 group">
+                <label className="block text-sm font-bold text-slate-400 mb-2 transition-colors group-focus-within:text-blue-400 uppercase tracking-wider">
+                    {label}
+                </label>
+                <input
+                    type={type}
+                    value={value}
+                    onChange={(e) => onChange(e.target.value)}
+                    placeholder={placeholder}
+                    className={`w-full px-5 py-3 glass-input rounded-2xl focus:outline-none focus:ring-4 focus:ring-blue-500/10 transition-all ${error ? 'border-red-300 bg-red-50' : ''
+                        }`}
+                />
+                {helper && !error && <p className="mt-2 text-[10px] text-slate-400 font-bold uppercase tracking-widest leading-relaxed">{helper}</p>}
+                {error && <p className="mt-2 text-xs text-red-500 font-bold">{error}</p>}
+            </div>
+        );
+
+        const Select = ({ label, value, onChange, options, error }) => (
+            <div className="mb-6">
+                <label className="block text-sm font-bold text-slate-400 mb-2 uppercase tracking-wider">{label}</label>
+                <div className="relative">
+                    <select
+                        value={value}
+                        onChange={(e) => onChange(e.target.value)}
+                        className={`w-full px-5 py-3 glass-input rounded-2xl appearance-none cursor-pointer focus:outline-none focus:ring-4 focus:ring-blue-500/10 transition-all ${error ? 'border-red-500/50' : ''
+                            }`}
+                        style={{ backgroundImage: 'url("data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' fill=\'none\' viewBox=\'0 0 24 24\' stroke=\'%2364748b\'%3E%3Cpath stroke-linecap=\'round\' stroke-linejoin=\'round\' stroke-width=\'2\' d=\'M19 9l-7 7-7-7\'/%3E%3C/svg%3E")', backgroundRepeat: 'no-repeat', backgroundPosition: 'right 1.25rem center', backgroundSize: '1.2em' }}
+                    >
+                        {options.map(opt => (
+                            <option key={opt.value} value={opt.value} className="bg-white text-slate-900">{opt.label}</option>
+                        ))}
+                    </select>
+                </div>
+                {error && <p className="mt-2 text-xs text-red-400 font-bold">{error}</p>}
+            </div>
+        );
+
+        const Toggle = ({ label, checked, onChange, helper }) => (
+            <div className="mb-6 flex items-center justify-between p-5 bg-slate-50 rounded-3xl border border-slate-200 transition-all hover:bg-slate-100/50">
+                <div className="flex-1 pr-4">
+                    <span className="text-sm font-bold text-slate-700 uppercase tracking-wide">{label}</span>
+                    {helper && <p className="text-[10px] text-slate-400 font-bold mt-1 uppercase tracking-widest">{helper}</p>}
+                </div>
+                <button
+                    onClick={() => onChange(!checked)}
+                    className={`relative inline-flex h-7 w-12 items-center rounded-full transition-all duration-300 ${checked ? 'bg-blue-600 shadow-[0_0_15px_rgba(37,99,235,0.3)]' : 'bg-slate-200'
+                        }`}
+                >
+                    <span className={`inline-block h-5 w-5 transform rounded-full bg-white shadow-md transition-transform duration-300 ${checked ? 'translate-x-6' : 'translate-x-1'
+                        }`} />
+                </button>
+            </div>
+        );
+
+        // ChatBot Component
+        const ChatAssistant = ({ currentStep, steps }) => {
+            const [isOpen, setIsOpen] = useState(false);
+            const [messages, setMessages] = useState([
+                { role: 'bot', text: "Hello! I'm the Bhadradri Infra Assistant. How can I help you architect your EKS cluster today?" }
+            ]);
+            const [input, setInput] = useState('');
+
+            const knowledgeBase = {
+                general: "I am Bhadradri Technologies' EKS Generator. I help you create production-ready Terraform code for AWS Kubernetes clusters automatically. No more manual HCL writing!",
+                stage0: "In the Identity stage, we define your project's soul. Use a unique project name (lowercase/hyphens) to distinguish your resources. Choosing the right Region (like us-west-2) is crucial for latency and compliance.",
+                stage1: "Networking is the backbone. We use a VPC CIDR (default 10.0.0.0/16) to carve out private space. Enabling HA NAT Gateways ensures your private nodes can always reach the internet, even if one zone fails.",
+                stage2: "Compute determines your power. T3.medium is great for testing, but M5.large is better for busy apps. Spot instances can save you up to 90% in costs for non-critical workloads!",
+                stage3: "The Review stage is your final barrier. Check if the project name and CIDR ranges look correct before we lock in the architecture.",
+                stage4: "Your HCL blueprint is ready! You can now download these files and run 'terraform init' followed by 'terraform apply' in your terminal to start the deployment."
+            };
+
+            const handleSend = (e) => {
+                if (e) e.preventDefault();
+                if (!input.trim()) return;
+
+                const userMsg = input.toLowerCase();
+                const newMessages = [...messages, { role: 'user', text: input }];
+                setMessages(newMessages);
+                setInput('');
+
+                // Simple simulated AI logic
+                setTimeout(() => {
+                    let response = "I'm not sure about that, but I can certainly help you with your EKS configuration! Try asking what this tool does or about the current step.";
+
+                    if (userMsg.includes('what') && userMsg.includes('tool')) {
+                        response = knowledgeBase.general;
+                    } else if (userMsg.includes('explain') || userMsg.includes('help') || userMsg.includes('what to do')) {
+                        response = knowledgeBase[`stage${currentStep}`];
+                    } else if (userMsg.includes('step') || userMsg.includes('stage')) {
+                        response = `We are currently in the ${steps[currentStep].label} phase. ${knowledgeBase[`stage${currentStep}`]}`;
+                    }
+
+                    setMessages(prev => [...prev, { role: 'bot', text: response }]);
+                }, 600);
+            };
+
+            useEffect(() => {
+                const scrollContainer = document.getElementById('chat-scroll');
+                if (scrollContainer) scrollContainer.scrollTop = scrollContainer.scrollHeight;
+            }, [messages, isOpen]);
+
+            return (
+                <div className="fixed bottom-10 right-10 z-[100]">
+                    {isOpen ? (
+                        <div className="bg-white rounded-[2rem] shadow-2xl border border-slate-200 w-80 md:w-96 overflow-hidden animate-slide-up flex flex-col">
+                            {/* Chat Header */}
+                            <div className="p-5 bg-slate-900 flex justify-between items-center text-white">
+                                <div className="flex items-center gap-3">
+                                    <div className="w-8 h-8 rounded-lg bg-white p-1">
+                                        <img src="logo.png" alt="Logo" className="w-full h-full object-contain" />
+                                    </div>
+                                    <span className="text-sm font-bold tracking-tight">Infra Assistant</span>
+                                </div>
+                                <button onClick={() => setIsOpen(false)} className="text-slate-400 hover:text-white transition-colors">
+                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" /></svg>
+                                </button>
+                            </div>
+
+                            {/* Chat Body */}
+                            <div id="chat-scroll" className="p-6 h-[400px] overflow-y-auto space-y-4 custom-scrollbar bg-white">
+                                {messages.map((msg, i) => (
+                                    <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                                        <div className={`p-4 rounded-2xl text-xs font-medium max-w-[85%] leading-relaxed ${msg.role === 'user' ? 'chat-bubble-user' : 'chat-bubble-bot shadow-sm'}`}>
+                                            {msg.text}
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+
+                            {/* Chat Input */}
+                            <form onSubmit={handleSend} className="p-4 bg-slate-50 border-t border-slate-100 flex gap-3">
+                                <input
+                                    type="text"
+                                    value={input}
+                                    onChange={(e) => setInput(e.target.value)}
+                                    placeholder="Type a message..."
+                                    className="flex-grow bg-white border border-slate-200 rounded-xl px-4 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                                />
+                                <button type="submit" className="bg-blue-600 text-white p-2 rounded-xl hover:bg-blue-700 transition-colors shadow-lg shadow-blue-500/20">
+                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" /></svg>
+                                </button>
+                            </form>
+                        </div>
+                    ) : (
+                        <button
+                            onClick={() => setIsOpen(true)}
+                            className="bg-slate-900 text-white p-4 rounded-2xl shadow-2xl hover:scale-110 active:scale-90 transition-all group flex items-center gap-3"
+                        >
+                            <div className="w-6 h-6 rounded bg-white p-0.5 group-hover:rotate-12 transition-transform">
+                                <img src="logo.png" alt="Logo" className="w-full h-full object-contain" />
+                            </div>
+                            <span className="text-xs font-black uppercase tracking-widest pl-1">Ask Assistant</span>
+                        </button>
+                    )}
+                </div>
+            );
+        };
+
+        // Main App
+        const App = () => {
+            const [currentStep, setCurrentStep] = useState(0);
+            const [generatedFiles, setGeneratedFiles] = useState(null);
+            const [errors, setErrors] = useState({});
+
+            const [config, setConfig] = useState({
+                projectName: '',
+                environment: 'dev',
+                clusterName: '',
+                region: 'us-west-2',
+                kubernetesVersion: '1.28',
+                vpcCidr: '10.0.0.0/16',
+                availabilityZones: ['us-west-2a', 'us-west-2b', 'us-west-2c'],
+                enableNatGateway: true,
+                singleNatGateway: false,
+                nodeGroups: [{
+                    name: 'primary-nodes',
+                    instanceTypes: ['t3.medium'],
+                    minSize: 2,
+                    desiredSize: 2,
+                    maxSize: 10,
+                    diskSize: 50,
+                    capacityType: 'ON_DEMAND'
+                }]
+            });
+
+            const steps = [
+                { id: 'core', label: 'Identity', icon: 'M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z' },
+                { id: 'network', label: 'Network', icon: 'M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9' },
+                { id: 'nodes', label: 'Compute', icon: 'M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10' },
+                { id: 'review', label: 'Review', icon: 'M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z' },
+                { id: 'output', label: 'HCL Code', icon: 'M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4' }
+            ];
+
+            useEffect(() => {
+                const subnets = calculateSubnets(config.vpcCidr, config.availabilityZones.length);
+                if (subnets) {
+                    setConfig(prev => ({ ...prev, privateSubnets: subnets.private, publicSubnets: subnets.public }));
+                }
+            }, [config.vpcCidr, config.availabilityZones.length]);
+
+            const validateStep = (step) => {
+                const newErrors = {};
+                if (step === 0) {
+                    newErrors.projectName = validators.projectName(config.projectName);
+                } else if (step === 1) {
+                    newErrors.vpcCidr = validators.cidr(config.vpcCidr);
+                }
+                const filtered = Object.fromEntries(Object.entries(newErrors).filter(([_, v]) => v != null));
+                setErrors(filtered);
+                return Object.keys(filtered).length === 0;
+            };
+
+            const handleNext = () => {
+                if (validateStep(currentStep)) {
+                    if (currentStep === 3) setGeneratedFiles(generateTerraform(config));
+                    setCurrentStep(prev => Math.min(prev + 1, steps.length - 1));
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                }
+            };
+
+            const downloadFiles = () => {
+                Object.entries(generatedFiles).forEach(([name, text]) => {
+                    const blob = new Blob([text], { type: 'text/plain' });
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url; a.download = name;
+                    a.click();
+                    URL.revokeObjectURL(url);
+                });
+            };
+
+            const renderStepContent = () => {
+                switch (currentStep) {
+                    case 0:
+                        return (
+                            <div className="space-y-8">
+                                <div className="grid md:grid-cols-2 gap-8">
+                                    <Input
+                                        label="Project Identifier"
+                                        value={config.projectName}
+                                        onChange={(v) => setConfig({ ...config, projectName: v })}
+                                        error={errors.projectName}
+                                        placeholder="e.g. monolith-backend"
+                                        helper="Unique name for resource grouping"
+                                    />
+                                    <Select
+                                        label="Target Environment"
+                                        value={config.environment}
+                                        onChange={(v) => setConfig({ ...config, environment: v })}
+                                        options={[
+                                            { value: 'dev', label: 'Development' },
+                                            { value: 'staging', label: 'Staging' },
+                                            { value: 'prod', label: 'Production' }
+                                        ]}
+                                    />
+                                </div>
+                                <div className="grid md:grid-cols-2 gap-8">
+                                    <Select
+                                        label="AWS Region"
+                                        value={config.region}
+                                        onChange={(v) => setConfig({ ...config, region: v })}
+                                        options={[
+                                            { value: 'us-east-1', label: 'US East (N. Virginia)' },
+                                            { value: 'us-west-2', label: 'US West (Oregon)' },
+                                            { value: 'eu-central-1', label: 'EU (Frankfurt)' }
+                                        ]}
+                                    />
+                                    <Select
+                                        label="Kubernetes Version"
+                                        value={config.kubernetesVersion}
+                                        onChange={(v) => setConfig({ ...config, kubernetesVersion: v })}
+                                        options={['1.27', '1.28', '1.29', '1.30'].map(v => ({ value: v, label: `Stable v${v}` }))}
+                                    />
+                                </div>
+                            </div>
+                        );
+                    case 1:
+                        return (
+                            <div className="space-y-6">
+                                <Input
+                                    label="VPC Network Range (CIDR)"
+                                    value={config.vpcCidr}
+                                    onChange={(v) => setConfig({ ...config, vpcCidr: v })}
+                                    error={errors.vpcCidr}
+                                    placeholder="10.0.0.0/16"
+                                    helper="Private IP address space for your infrastructure"
+                                />
+                                <div className="grid md:grid-cols-2 gap-6">
+                                    <Toggle
+                                        label="Highly Available NAT Gateways"
+                                        checked={!config.singleNatGateway}
+                                        onChange={(v) => setConfig({ ...config, singleNatGateway: !v })}
+                                        helper="Provision one NAT Gateway per Availability Zone"
+                                    />
+                                    <div className="p-6 bg-blue-50 rounded-3xl border border-blue-100">
+                                        <h4 className="text-sm font-bold text-blue-700 mb-2 uppercase tracking-wide">Network Summary</h4>
+                                        <div className="text-xs text-blue-600 space-y-1 font-medium">
+                                            <p>Subnets: {config.availabilityZones.length * 2}</p>
+                                            <p>Public: {config.publicSubnets?.slice(0, 2).join(', ')}...</p>
+                                            <p>Private: {config.privateSubnets?.slice(0, 2).join(', ')}...</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        );
+                    case 2:
+                        return (
+                            <div className="space-y-6">
+                                {config.nodeGroups.map((ng, i) => (
+                                    <div key={i} className="p-6 bg-slate-50 rounded-3xl border border-slate-200">
+                                        <div className="flex justify-between items-center mb-6">
+                                            <h3 className="text-lg font-bold text-slate-800">Compute Group: {ng.name}</h3>
+                                        </div>
+                                        <div className="grid md:grid-cols-3 gap-6">
+                                            <Input label="Nodes (Min)" type="number" value={ng.minSize} onChange={(v) => setConfig({ ...config, nodeGroups: [{ ...ng, minSize: v }] })} />
+                                            <Input label="Nodes (Desired)" type="number" value={ng.desiredSize} onChange={(v) => setConfig({ ...config, nodeGroups: [{ ...ng, desiredSize: v }] })} />
+                                            <Input label="Nodes (Max)" type="number" value={ng.maxSize} onChange={(v) => setConfig({ ...config, nodeGroups: [{ ...ng, maxSize: v }] })} />
+                                        </div>
+                                        <div className="grid md:grid-cols-2 gap-6 mt-4">
+                                            <Select label="Instance Type" value={ng.instanceTypes[0]} onChange={(v) => setConfig({ ...config, nodeGroups: [{ ...ng, instanceTypes: [v] }] })} options={[{ value: 't3.medium', label: 't3.medium (Standard)' }, { value: 'm5.large', label: 'm5.large (General Purpose)' }, { value: 'c5.xlarge', label: 'c5.xlarge (Compute)' }]} />
+                                            <Select label="Capacity Strategy" value={ng.capacityType} onChange={(v) => setConfig({ ...config, nodeGroups: [{ ...ng, capacityType: v }] })} options={[{ value: 'ON_DEMAND', label: 'On-Demand (Guaranteed)' }, { value: 'SPOT', label: 'Spot (Cost Optimized)' }]} />
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        );
+                    case 3:
+                        return (
+                            <div className="space-y-8 animate-fade-in">
+                                <div className="grid md:grid-cols-2 gap-8">
+                                    <div className="space-y-4">
+                                        <h3 className="text-xl font-bold text-slate-900">Cluster Identity</h3>
+                                        <div className="space-y-2">
+                                            <div className="flex justify-between px-2"><span className="text-slate-500 text-sm font-bold">Project</span><span className="font-bold text-slate-800">{config.projectName}</span></div>
+                                            <div className="flex justify-between px-2"><span className="text-slate-500 text-sm font-bold">Env</span><span className="font-bold uppercase text-blue-600">{config.environment}</span></div>
+                                            <div className="flex justify-between px-2"><span className="text-slate-500 text-sm font-bold">Region</span><span className="font-bold text-slate-800">{config.region}</span></div>
+                                        </div>
+                                    </div>
+                                    <div className="space-y-4">
+                                        <h3 className="text-xl font-bold text-slate-900">Resources</h3>
+                                        <div className="space-y-2">
+                                            <div className="flex justify-between px-2"><span className="text-slate-500 text-sm font-bold">VPC CIDR</span><span className="font-mono font-bold text-slate-800">{config.vpcCidr}</span></div>
+                                            <div className="flex justify-between px-2"><span className="text-slate-500 text-sm font-bold">Nodes</span><span className="font-bold text-slate-800">{config.nodeGroups[0].minSize} - {config.nodeGroups[0].maxSize} units</span></div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div className="p-6 bg-blue-600 rounded-3xl text-white shadow-xl shadow-blue-900/30">
+                                    <h4 className="font-extrabold mb-1">Architecture Verified</h4>
+                                    <p className="text-sm text-blue-100 font-medium">Click "Generate Code" to create production-grade HCL files.</p>
+                                </div>
+                            </div>
+                        );
+                    case 4:
+                        return (
+                            <div className="space-y-6 animate-fade-in">
+                                <div className="flex justify-between items-center mb-4">
+                                    <h3 className="text-xl font-bold text-slate-900">Infrastructure Blueprint</h3>
+                                    <button onClick={downloadFiles} className="flex items-center gap-2 px-6 py-2 bg-blue-600 text-white font-bold rounded-xl hover:bg-blue-700 transition-all shadow-lg shadow-blue-900/30">
+                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
+                                        Export HCL
+                                    </button>
+                                </div>
+                                <div className="space-y-6">
+                                    {Object.entries(generatedFiles).map(([name, code]) => (
+                                        <div key={name} className="rounded-3xl overflow-hidden border border-slate-200 bg-slate-50 shadow-sm">
+                                            <div className="px-6 py-3 bg-white border-b border-slate-200 flex justify-between items-center">
+                                                <span className="text-xs font-bold text-slate-500 tracking-widest uppercase">{name}</span>
+                                                <span className="text-[10px] text-slate-400 font-mono">HCL / TERRAFORM</span>
+                                            </div>
+                                            <pre className="p-6 text-sm overflow-x-auto custom-scrollbar code-font text-slate-700">
+                                                <code dangerouslySetInnerHTML={{ __html: highlightHCL(code) }} />
+                                            </pre>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        );
+                    default:
+                        return null;
+                }
+            };
+
+            return (
+                <div className="flex flex-col min-h-screen">
+                    {/* Top Branding Bar */}
+                    <div className="bg-blue-50/50 backdrop-blur-md border-b border-slate-100 py-2 px-6 text-center">
+                        <p className="text-[10px] font-black text-blue-600 uppercase tracking-[0.3em]">
+                            Bhadradri Technologies Infrastructure Management Portal • Secure Access System
+                        </p>
+                    </div>
+
+                    {/* Navigation / Header */}
+                    <header className="py-8 px-6">
+                        <div className="max-w-6xl mx-auto flex items-center justify-between">
+                            <div className="flex items-center gap-5">
+                                <div className="p-1.5 bg-white rounded-2xl shadow-[0_0_30px_rgba(255,255,255,0.1)]">
+                                    <img src="logo.png" alt="Bhadradri Technologies Logo" className="w-14 h-14 object-contain" />
+                                </div>
+                                <div>
+                                    <h1 className="text-3xl font-black text-slate-900 tracking-tighter leading-none">Bhadradri Technologies</h1>
+                                    <p className="text-xs font-bold text-blue-600 uppercase tracking-[0.25em] mt-1">Cloud Engineering Excellence</p>
+                                </div>
+                            </div>
+                            <div className="hidden lg:flex items-center gap-8 text-[11px] font-black text-slate-400 uppercase tracking-widest">
+                                <a href="#" className="hover:text-slate-900 transition-colors">Infrastructure</a>
+                                <a href="#" className="hover:text-slate-900 transition-colors">Security</a>
+                                <a href="#" className="hover:text-slate-900 transition-colors">Compliance</a>
+                                <div className="h-4 w-px bg-slate-200"></div>
+                                <span className="text-blue-600">System Ready</span>
+                            </div>
+                        </div>
+                    </header>
+
+                    {/* Main Content */}
+                    <main className="flex-grow max-w-5xl mx-auto w-full px-6 pb-24 pt-4">
+                        <div className="text-center mb-16 animate-fade-in">
+                            <h2 className="text-5xl md:text-6xl font-black text-slate-900 mb-6 tracking-tighter leading-tight">
+                                <span className="premium-text-gradient">EKS Architecture</span> Engine
+                            </h2>
+                            <p className="text-slate-600 max-w-2xl mx-auto font-medium text-lg leading-relaxed">
+                                Deploy hardened, production-ready Kubernetes infrastructure on AWS using Bhadradri's automated provisioning pipeline.
+                            </p>
+                        </div>
+
+                        {/* Progress Steps */}
+                        <div className="flex justify-between mb-20 px-4 relative max-w-3xl mx-auto">
+                            <div className="absolute top-1/2 left-0 w-full h-[1px] bg-slate-200 -translate-y-1/2 -z-10"></div>
+                            {steps.map((step, idx) => (
+                                <div key={step.id} className={`flex flex-col items-center gap-2 transition-all duration-500 ${idx > currentStep ? 'step-inactive' : 'step-active'}`}>
+                                    <div className={`w-14 h-14 rounded-2xl flex items-center justify-center border-2 transition-all duration-500 ${idx < currentStep ? 'bg-green-500 border-green-500 text-white' :
+                                        idx === currentStep ? 'bg-blue-600 border-blue-600 text-white shadow-[0_0_30px_rgba(37,99,235,0.2)]' :
+                                            'bg-white border-slate-200 text-slate-400'
+                                        }`}>
+                                        {idx < currentStep ? (
+                                            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="4" d="M5 13l4 4L19 7" /></svg>
+                                        ) : (
+                                            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d={step.icon} /></svg>
+                                        )}
+                                    </div>
+                                    <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">{step.label}</span>
+                                </div>
+                            ))}
+                        </div>
+
+                        {/* Main Glass Panel */}
+                        <div className="glass-card rounded-[3rem] p-10 md:p-16 animate-fade-in">
+                            <div className="min-h-[300px]">
+                                {renderStepContent()}
+                            </div>
+
+                            {/* Nav Buttons */}
+                            <div className="mt-16 flex justify-between items-center pt-10 border-t border-slate-100">
+                                <button
+                                    onClick={() => currentStep > 0 && setCurrentStep(prev => prev - 1)}
+                                    className={`px-10 py-4 rounded-2xl font-black text-[11px] uppercase tracking-[0.2em] transition-all ${currentStep === 0 ? 'opacity-0 pointer-events-none' : 'text-slate-400 hover:text-slate-900'
+                                        }`}
+                                >
+                                    Previous Phase
+                                </button>
+
+                                {currentStep < steps.length - 1 ? (
+                                    <button
+                                        onClick={handleNext}
+                                        className="px-12 py-4 premium-gradient text-white rounded-2xl font-black text-[11px] uppercase tracking-[0.2em] shadow-xl hover:scale-105 active:scale-95 transition-all flex items-center gap-3"
+                                    >
+                                        {currentStep === 3 ? 'Generate Code' : 'Next Configuration'}
+                                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M13 7l5 5m0 0l-5 5m5-5H6" /></svg>
+                                    </button>
+                                ) : (
+                                    <button
+                                        onClick={() => window.location.reload()}
+                                        className="px-12 py-4 bg-slate-100 text-slate-600 rounded-2xl font-black text-[11px] uppercase tracking-[0.2em] hover:bg-slate-200 transition-all border border-slate-200"
+                                    >
+                                        New Architecture
+                                    </button>
+                                )}
+                            </div>
+                        </div>
+                    </main>
+
+                    {/* High-End Footer with Bhadradri Technologies copyright */}
+                    <footer className="bg-slate-50 border-t border-slate-200 pt-24 pb-16">
+                        <div className="max-w-6xl mx-auto px-10">
+                            <div className="grid md:grid-cols-4 gap-16 mb-24">
+                                <div className="col-span-2">
+                                    <div className="flex items-center gap-4 mb-8">
+                                        <div className="w-12 h-12 bg-white rounded-xl p-1 shadow-md border border-slate-100">
+                                            <img src="logo.png" alt="Logo" className="w-full h-full object-contain" />
+                                        </div>
+                                        <span className="text-2xl font-black text-slate-900 tracking-tighter">Bhadradri Technologies</span>
+                                    </div>
+                                    <p className="text-slate-500 font-medium text-lg leading-relaxed max-w-md">
+                                        The global leader in cloud infrastructure automation and sovereign Kubernetes solutions. Architecting the future of enterprise computing.
+                                    </p>
+                                </div>
+                                <div>
+                                    <h4 className="text-xs font-black text-slate-900 uppercase tracking-[0.3em] mb-8">Solutions</h4>
+                                    <ul className="space-y-4 text-sm font-bold text-slate-400 uppercase tracking-widest">
+                                        <li className="hover:text-blue-600 cursor-pointer transition-colors">Cloud Core</li>
+                                        <li className="hover:text-blue-600 cursor-pointer transition-colors">Mesh Network</li>
+                                        <li className="hover:text-blue-600 cursor-pointer transition-colors">Auto-Scaling</li>
+                                        <li className="hover:text-blue-600 cursor-pointer transition-colors">Guardrails</li>
+                                    </ul>
+                                </div>
+                                <div>
+                                    <h4 className="text-xs font-black text-slate-900 uppercase tracking-[0.3em] mb-8">Company</h4>
+                                    <ul className="space-y-4 text-sm font-bold text-slate-400 uppercase tracking-widest">
+                                        <li className="hover:text-blue-600 cursor-pointer transition-colors">Our Vision</li>
+                                        <li className="hover:text-blue-600 cursor-pointer transition-colors">Whitepapers</li>
+                                        <li className="hover:text-blue-600 cursor-pointer transition-colors">Global Hubs</li>
+                                        <li className="hover:text-blue-600 cursor-pointer transition-colors">Status</li>
+                                    </ul>
+                                </div>
+                            </div>
+
+                            {/* Prominent Copyright Requested */}
+                            <div className="pt-12 border-t border-slate-200 flex flex-col md:flex-row justify-between items-center gap-8">
+                                <div className="text-slate-400 text-[10px] font-black uppercase tracking-[0.4em]">
+                                    &copy; {new Date().getFullYear()} Bhadradri Technologies Inc. All Rights Reserved.
+                                </div>
+                                <div className="flex gap-10 text-[10px] font-black text-slate-300 uppercase tracking-[0.3em]">
+                                    <span className="hover:text-slate-900 cursor-pointer">Security Portal</span>
+                                    <span className="hover:text-slate-900 cursor-pointer">Legal Documentation</span>
+                                    <span className="hover:text-slate-900 cursor-pointer">Privacy Hub</span>
+                                </div>
+                            </div>
+                        </div>
+                    </footer>
+
+                    {/* Chatbot Integration */}
+                    <ChatAssistant currentStep={currentStep} steps={steps} />
+                </div>
+            );
+        };
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+
+</html>
