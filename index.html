@@ -457,47 +457,18 @@ output "vpc_id" { value = module.vpc.vpc_id }`,
             </div>
         );
 
-        // ChatBot Component — scroll-aware + draggable
+        // ChatBot — position:fixed (anchored to iframe viewport) + draggable
         const ChatAssistant = ({ currentStep, steps }) => {
             const [isOpen, setIsOpen] = useState(false);
             const [messages, setMessages] = useState([
-                { role: 'bot', text: "Hello! 👋 I'm the Bhadradri Infra Assistant — I follow you as you scroll! Drag my header to reposition me anywhere." }
+                { role: 'bot', text: "Hello! 👋 I'm the Bhadradri Infra Assistant. I stay visible as you scroll! Drag my header to move me anywhere." }
             ]);
             const [input, setInput] = useState('');
 
-            // Viewport-relative offset (survives scrolling).
-            // The widget always appears at (vpX, vpY) relative to the visible window corner.
-            const vpOffset = React.useRef({ x: window.innerWidth - 290, y: window.innerHeight - 90 });
-            const [scrollY, setScrollY] = useState(window.scrollY || 0);
-            const [scrollX, setScrollX] = useState(window.scrollX || 0);
-
-            // Absolute position = scroll + viewport-relative offset
-            const absPos = {
-                x: scrollX + vpOffset.current.x,
-                y: scrollY + vpOffset.current.y
-            };
-
-            // Track scroll so widget follows
-            useEffect(() => {
-                const onScroll = () => {
-                    setScrollY(window.scrollY || document.documentElement.scrollTop || 0);
-                    setScrollX(window.scrollX || document.documentElement.scrollLeft || 0);
-                };
-                window.addEventListener('scroll', onScroll, { passive: true });
-                document.addEventListener('scroll', onScroll, { passive: true });
-                // Also watch Streamlit parent scroll via postMessage (iframes)
-                const parentScroll = () => onScroll();
-                window.addEventListener('message', parentScroll);
-                return () => {
-                    window.removeEventListener('scroll', onScroll);
-                    document.removeEventListener('scroll', onScroll);
-                    window.removeEventListener('message', parentScroll);
-                };
-            }, []);
-
-            // Drag logic — updates viewport offset, not absolute position
+            // Drag: offset from bottom-right corner in pixels
+            const [offset, setOffset] = useState({ right: 24, bottom: 24 });
             const dragging = React.useRef(false);
-            const dragStart = React.useRef({ mouseX: 0, mouseY: 0, vpX: 0, vpY: 0 });
+            const dragStart = React.useRef({ mouseX: 0, mouseY: 0, right: 24, bottom: 24 });
             const didDrag = React.useRef(false);
 
             const onDragStart = (e) => {
@@ -507,8 +478,8 @@ output "vpc_id" { value = module.vpc.vpc_id }`,
                 dragStart.current = {
                     mouseX: e.clientX,
                     mouseY: e.clientY,
-                    vpX: vpOffset.current.x,
-                    vpY: vpOffset.current.y
+                    right: offset.right,
+                    bottom: offset.bottom
                 };
                 document.body.style.userSelect = 'none';
             };
@@ -519,12 +490,10 @@ output "vpc_id" { value = module.vpc.vpc_id }`,
                     const dx = e.clientX - dragStart.current.mouseX;
                     const dy = e.clientY - dragStart.current.mouseY;
                     if (Math.abs(dx) > 3 || Math.abs(dy) > 3) didDrag.current = true;
-                    vpOffset.current = {
-                        x: Math.max(0, Math.min(window.innerWidth - 280, dragStart.current.vpX + dx)),
-                        y: Math.max(0, Math.min(window.innerHeight - 60, dragStart.current.vpY + dy))
-                    };
-                    // Trigger re-render by updating scroll state slightly
-                    setScrollY(s => s);
+                    setOffset({
+                        right: Math.max(8, Math.min(window.innerWidth - 200, dragStart.current.right - dx)),
+                        bottom: Math.max(8, Math.min(window.innerHeight - 60, dragStart.current.bottom - dy))
+                    });
                 };
                 const onUp = () => {
                     dragging.current = false;
@@ -568,10 +537,18 @@ output "vpc_id" { value = module.vpc.vpc_id }`,
                 if (el) el.scrollTop = el.scrollHeight;
             }, [messages, isOpen]);
 
+            // position:fixed anchors to the visible iframe viewport — works with scrolling=True
+            const fixedStyle = {
+                position: 'fixed',
+                right: offset.right,
+                bottom: offset.bottom,
+                zIndex: 9999
+            };
+
             return (
-                <div style={{ position: 'absolute', left: absPos.x, top: absPos.y, zIndex: 9999, transition: 'top 0.05s linear, left 0.05s linear' }}>
+                <div style={fixedStyle}>
                     {isOpen ? (
-                        <div className="bg-white rounded-[2rem] shadow-2xl border border-slate-200 overflow-hidden animate-slide-up flex flex-col" style={{ width: '340px', maxHeight: '520px' }}>
+                        <div className="bg-white rounded-[2rem] shadow-2xl border border-slate-200 overflow-hidden animate-slide-up flex flex-col" style={{ width: '340px', maxHeight: '500px' }}>
                             {/* Draggable Header */}
                             <div
                                 onMouseDown={onDragStart}
@@ -584,7 +561,7 @@ output "vpc_id" { value = module.vpc.vpc_id }`,
                                     </div>
                                     <div>
                                         <div className="text-sm font-black tracking-tight">Infra Assistant</div>
-                                        <div className="text-[10px] text-slate-400 font-bold">⠿ drag · <span className="text-green-400">● follows scroll</span></div>
+                                        <div className="text-[10px] text-slate-400 font-bold">⠿ drag to move · <span className="text-green-400">● online</span></div>
                                     </div>
                                 </div>
                                 <button onMouseDown={(e) => e.stopPropagation()} onClick={() => setIsOpen(false)} className="text-slate-400 hover:text-white transition-colors">
@@ -600,7 +577,7 @@ output "vpc_id" { value = module.vpc.vpc_id }`,
                             </div>
 
                             {/* Messages */}
-                            <div id="chat-scroll" className="p-4 overflow-y-auto space-y-3 custom-scrollbar bg-white" style={{ minHeight: '180px', maxHeight: '240px' }}>
+                            <div id="chat-scroll" className="p-4 overflow-y-auto space-y-3 custom-scrollbar bg-white" style={{ minHeight: '160px', maxHeight: '220px' }}>
                                 {messages.map((msg, i) => (
                                     <div key={i} className={`flex items-end gap-2 ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
                                         {msg.role === 'bot' && <div className="w-6 h-6 rounded-full bg-slate-100 border border-slate-200 flex-shrink-0 flex items-center justify-center text-xs">🤖</div>}
@@ -632,7 +609,7 @@ output "vpc_id" { value = module.vpc.vpc_id }`,
                             </div>
                             <div className="text-left">
                                 <div className="text-xs font-black uppercase tracking-wider">Ask Assistant</div>
-                                <div className="text-[10px] text-green-400 font-bold">● follows scroll · drag to move</div>
+                                <div className="text-[10px] text-green-400 font-bold">● always visible · drag to move</div>
                             </div>
                         </button>
                     )}

@@ -3,7 +3,6 @@ import streamlit.components.v1 as components
 import os
 import base64
 
-# Set page configuration for professional enterprise look
 st.set_page_config(
     page_title="Bhadradri Technologies | EKS Infrastructure Engine",
     page_icon="🏛️",
@@ -11,46 +10,47 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
-# Hide Streamlit header/footer/padding for a full-screen premium feel
-hide_st_style = """
+# Hide ALL Streamlit chrome so the iframe is full-viewport
+st.markdown("""
     <style>
-    #MainMenu {visibility: hidden;}
-    footer {visibility: hidden;}
-    header {visibility: hidden;}
+    #MainMenu, footer, header { visibility: hidden; }
     .block-container {
-        padding-top: 0rem;
-        padding-bottom: 0rem;
-        padding-left: 0rem;
-        padding-right: 0rem;
+        padding: 0 !important;
+        margin: 0 !important;
+        max-width: 100% !important;
     }
-    iframe { border: none; }
+    [data-testid="stAppViewContainer"] {
+        padding: 0 !important;
+    }
+    iframe {
+        border: none !important;
+        display: block !important;
+    }
     </style>
-"""
-st.markdown(hide_st_style, unsafe_allow_html=True)
+""", unsafe_allow_html=True)
 
-# --- Convert logo.png to base64 so it works in Streamlit Cloud ---
+# Encode logo as base64 so it works inside the iframe sandbox
 logo_base64 = ""
 logo_path = os.path.join(os.path.dirname(__file__), "logo.png")
 if os.path.exists(logo_path):
-    with open(logo_path, "rb") as img_file:
-        logo_base64 = base64.b64encode(img_file.read()).decode("utf-8")
+    with open(logo_path, "rb") as f:
+        logo_base64 = base64.b64encode(f.read()).decode("utf-8")
 
-# --- Load the premium EKS Generator index.html ---
+# Load the HTML portal
 html_path = os.path.join(os.path.dirname(__file__), "index.html")
 if os.path.exists(html_path):
     with open(html_path, "r", encoding="utf-8") as f:
-        html_content = f.read()
+        html = f.read()
 
-    # Replace all relative logo.png references with the embedded base64 data URI
-    # This fixes the broken image issue on Streamlit Cloud
+    # Replace logo.png with base64 data URI so it renders on Streamlit Cloud
     if logo_base64:
-        logo_data_uri = f"data:image/png;base64,{logo_base64}"
-        html_content = html_content.replace('src="logo.png"', f'src="{logo_data_uri}"')
-        html_content = html_content.replace("src='logo.png'", f"src='{logo_data_uri}'")
+        data_uri = f"data:image/png;base64,{logo_base64}"
+        html = html.replace('src="logo.png"', f'src="{data_uri}"')
+        html = html.replace("src='logo.png'", f"src='{data_uri}'")
 
-    # Render the full app inside Streamlit
-    components.html(html_content, height=1600, scrolling=True)
+    # Render with scrolling=True so content scrolls INSIDE the iframe.
+    # This makes position:fixed work correctly (fixed to iframe viewport).
+    components.html(html, height=900, scrolling=True)
 
 else:
-    st.error("❌ Infrastructure Portal file (index.html) not found.")
-    st.info("Make sure `index.html` is in the same directory as `app.py`.")
+    st.error("❌ index.html not found. Make sure it is in the same folder as app.py.")
