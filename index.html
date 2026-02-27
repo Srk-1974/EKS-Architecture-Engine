@@ -457,69 +457,93 @@ output "vpc_id" { value = module.vpc.vpc_id }`,
             </div>
         );
 
-        // ChatBot Component
+        // ChatBot Component — draggable via mouse
         const ChatAssistant = ({ currentStep, steps }) => {
             const [isOpen, setIsOpen] = useState(false);
             const [messages, setMessages] = useState([
-                { role: 'bot', text: "Hello! I'm the Bhadradri Infra Assistant. How can I help you architect your EKS cluster today?" }
+                { role: 'bot', text: "Hello! I'm the Bhadradri Infra Assistant 👋 Drag me anywhere with your mouse! Ask me anything about your EKS setup." }
             ]);
             const [input, setInput] = useState('');
 
-            const knowledgeBase = {
-                general: "I am Bhadradri Technologies' EKS Generator. I help you create production-ready Terraform code for AWS Kubernetes clusters automatically. No more manual HCL writing!",
-                stage0: "In the Identity stage, we define your project's soul. Use a unique project name (lowercase/hyphens) to distinguish your resources. Choosing the right Region (like us-west-2) is crucial for latency and compliance.",
-                stage1: "Networking is the backbone. We use a VPC CIDR (default 10.0.0.0/16) to carve out private space. Enabling HA NAT Gateways ensures your private nodes can always reach the internet, even if one zone fails.",
-                stage2: "Compute determines your power. T3.medium is great for testing, but M5.large is better for busy apps. Spot instances can save you up to 90% in costs for non-critical workloads!",
-                stage3: "The Review stage is your final barrier. Check if the project name and CIDR ranges look correct before we lock in the architecture.",
-                stage4: "Your HCL blueprint is ready! You can now download these files and run 'terraform init' followed by 'terraform apply' in your terminal to start the deployment."
-            };
+            // Drag position — start at bottom-right
+            const [pos, setPos] = useState({ x: Math.max(0, window.innerWidth - 300), y: Math.max(0, window.innerHeight - 100) });
+            const dragging = React.useRef(false);
+            const dragOffset = React.useRef({ x: 0, y: 0 });
 
-            const handleSend = (e) => {
-                if (e) e.preventDefault();
-                if (!input.trim()) return;
-
-                const userMsg = input.toLowerCase();
-                const newMessages = [...messages, { role: 'user', text: input }];
-                setMessages(newMessages);
-                setInput('');
-
-                // Simple simulated AI logic
-                setTimeout(() => {
-                    let response = "I'm not sure about that, but I can certainly help you with your EKS configuration! Try asking what this tool does or about the current step.";
-
-                    if (userMsg.includes('what') && userMsg.includes('tool')) {
-                        response = knowledgeBase.general;
-                    } else if (userMsg.includes('explain') || userMsg.includes('help') || userMsg.includes('what to do')) {
-                        response = knowledgeBase[`stage${currentStep}`];
-                    } else if (userMsg.includes('step') || userMsg.includes('stage')) {
-                        response = `We are currently in the ${steps[currentStep].label} phase. ${knowledgeBase[`stage${currentStep}`]}`;
-                    }
-
-                    setMessages(prev => [...prev, { role: 'bot', text: response }]);
-                }, 600);
+            const onDragStart = (e) => {
+                e.preventDefault();
+                dragging.current = true;
+                dragOffset.current = { x: e.clientX - pos.x, y: e.clientY - pos.y };
+                document.body.style.userSelect = 'none';
             };
 
             useEffect(() => {
-                const scrollContainer = document.getElementById('chat-scroll');
-                if (scrollContainer) scrollContainer.scrollTop = scrollContainer.scrollHeight;
+                const onMove = (e) => {
+                    if (!dragging.current) return;
+                    setPos({
+                        x: Math.max(0, Math.min(window.innerWidth - 280, e.clientX - dragOffset.current.x)),
+                        y: Math.max(0, Math.min(window.innerHeight - 60, e.clientY - dragOffset.current.y))
+                    });
+                };
+                const onUp = () => {
+                    dragging.current = false;
+                    document.body.style.userSelect = '';
+                };
+                window.addEventListener('mousemove', onMove);
+                window.addEventListener('mouseup', onUp);
+                return () => { window.removeEventListener('mousemove', onMove); window.removeEventListener('mouseup', onUp); };
+            }, []);
+
+            const knowledgeBase = {
+                general: "I am Bhadradri Technologies' EKS Generator. I help you create production-ready Terraform code for AWS Kubernetes clusters automatically — no more manual HCL writing!",
+                stage0: "In the Identity stage, define your project's core. Use a unique project name (lowercase/hyphens). Pick the right AWS Region for latency and compliance.",
+                stage1: "Networking is the backbone. The VPC CIDR (default 10.0.0.0/16) carves your private space. HA NAT Gateways ensure your nodes always have internet access, even if one AZ fails.",
+                stage2: "Compute determines your power. T3.medium is great for testing, M5.large for production. Spot instances can save up to 90% in costs for non-critical workloads!",
+                stage3: "The Review stage is your final checkpoint. Verify the project name, environment and CIDR ranges before locking in your architecture.",
+                stage4: "Your HCL blueprint is ready! Download the files and run 'terraform init' then 'terraform apply' in your terminal to deploy to AWS."
+            };
+
+            const handleSend = (e, overrideText) => {
+                if (e) e.preventDefault();
+                const text = overrideText || input;
+                if (!text.trim()) return;
+                const userMsg = text.toLowerCase();
+                setMessages(prev => [...prev, { role: 'user', text }]);
+                setInput('');
+                setTimeout(() => {
+                    let response = "Try asking: 'What is this tool?', 'Explain this stage', or 'What to do next?'";
+                    if (userMsg.includes('what') && userMsg.includes('tool')) response = knowledgeBase.general;
+                    else if (userMsg.includes('explain') || userMsg.includes('help') || userMsg.includes('what to do') || userMsg.includes('next')) response = knowledgeBase[`stage${currentStep}`];
+                    else if (userMsg.includes('step') || userMsg.includes('stage')) response = `We are in the ${steps[currentStep].label} phase. ${knowledgeBase[`stage${currentStep}`]}`;
+                    setMessages(prev => [...prev, { role: 'bot', text: response }]);
+                }, 500);
+            };
+
+            useEffect(() => {
+                const el = document.getElementById('chat-scroll');
+                if (el) el.scrollTop = el.scrollHeight;
             }, [messages, isOpen]);
 
             return (
-                <div className="chat-launcher">
+                <div style={{ position: 'fixed', left: pos.x, top: pos.y, zIndex: 9999 }}>
                     {isOpen ? (
-                        <div className="bg-white rounded-[2rem] shadow-2xl border border-slate-200 w-80 md:w-96 overflow-hidden animate-slide-up flex flex-col" style={{ maxHeight: '520px' }}>
-                            {/* Chat Header */}
-                            <div className="p-4 bg-slate-900 flex justify-between items-center text-white flex-shrink-0">
+                        <div className="bg-white rounded-[2rem] shadow-2xl border border-slate-200 overflow-hidden animate-slide-up flex flex-col" style={{ width: '340px', maxHeight: '520px' }}>
+                            {/* Draggable Header - grab cursor */}
+                            <div
+                                onMouseDown={onDragStart}
+                                className="p-4 bg-slate-900 flex justify-between items-center text-white flex-shrink-0 select-none"
+                                style={{ cursor: 'grab', borderRadius: '2rem 2rem 0 0' }}
+                            >
                                 <div className="flex items-center gap-3">
                                     <div className="w-8 h-8 rounded-lg bg-white p-0.5 flex-shrink-0">
                                         <img src="logo.png" alt="Bhadradri Logo" className="w-full h-full object-contain" onError={(e) => { e.target.style.display = 'none'; e.target.parentNode.innerHTML = '🏛️'; }} />
                                     </div>
                                     <div>
                                         <div className="text-sm font-black tracking-tight">Infra Assistant</div>
-                                        <div className="text-[10px] text-green-400 font-bold uppercase tracking-widest">● Online</div>
+                                        <div className="text-[10px] text-slate-400 font-bold">⠿ drag to move &nbsp;·&nbsp; <span className="text-green-400">● online</span></div>
                                     </div>
                                 </div>
-                                <button onClick={() => setIsOpen(false)} className="text-slate-400 hover:text-white transition-colors">
+                                <button onMouseDown={(e) => e.stopPropagation()} onClick={() => setIsOpen(false)} className="text-slate-400 hover:text-white transition-colors">
                                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" /></svg>
                                 </button>
                             </div>
@@ -527,15 +551,15 @@ output "vpc_id" { value = module.vpc.vpc_id }`,
                             {/* Quick Prompts */}
                             <div className="px-4 pt-3 pb-2 bg-slate-50 border-b border-slate-100 flex gap-2 flex-wrap flex-shrink-0">
                                 {['What is this tool?', 'Explain this stage', 'What to do next?'].map((q) => (
-                                    <button key={q} onClick={() => { setInput(q); }} className="text-[10px] px-3 py-1.5 bg-white border border-slate-200 rounded-full text-slate-600 font-bold hover:bg-blue-50 hover:border-blue-300 hover:text-blue-700 transition-all">{q}</button>
+                                    <button key={q} onClick={() => handleSend(null, q)} className="text-[10px] px-3 py-1.5 bg-white border border-slate-200 rounded-full text-slate-600 font-bold hover:bg-blue-50 hover:border-blue-300 hover:text-blue-700 transition-all">{q}</button>
                                 ))}
                             </div>
 
-                            {/* Chat Body */}
-                            <div id="chat-scroll" className="p-5 overflow-y-auto space-y-3 custom-scrollbar bg-white" style={{ minHeight: '200px', maxHeight: '260px' }}>
+                            {/* Messages */}
+                            <div id="chat-scroll" className="p-4 overflow-y-auto space-y-3 custom-scrollbar bg-white" style={{ minHeight: '180px', maxHeight: '240px' }}>
                                 {messages.map((msg, i) => (
-                                    <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-                                        {msg.role === 'bot' && <div className="w-6 h-6 rounded-full bg-white border border-slate-200 shadow-sm flex-shrink-0 mr-2 flex items-center justify-center text-xs">🤖</div>}
+                                    <div key={i} className={`flex items-end gap-2 ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                                        {msg.role === 'bot' && <div className="w-6 h-6 rounded-full bg-slate-100 border border-slate-200 flex-shrink-0 flex items-center justify-center text-xs">🤖</div>}
                                         <div className={`p-3 rounded-2xl text-xs font-medium max-w-[80%] leading-relaxed ${msg.role === 'user' ? 'chat-bubble-user' : 'chat-bubble-bot shadow-sm'}`}>
                                             {msg.text}
                                         </div>
@@ -543,15 +567,9 @@ output "vpc_id" { value = module.vpc.vpc_id }`,
                                 ))}
                             </div>
 
-                            {/* Chat Input */}
+                            {/* Input */}
                             <form onSubmit={handleSend} className="p-3 bg-slate-50 border-t border-slate-100 flex gap-2 flex-shrink-0">
-                                <input
-                                    type="text"
-                                    value={input}
-                                    onChange={(e) => setInput(e.target.value)}
-                                    placeholder="Ask about this stage..."
-                                    className="flex-grow bg-white border border-slate-200 rounded-xl px-4 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-blue-500/20"
-                                />
+                                <input type="text" value={input} onChange={(e) => setInput(e.target.value)} placeholder="Ask about this stage..." className="flex-grow bg-white border border-slate-200 rounded-xl px-4 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-blue-500/20" />
                                 <button type="submit" className="bg-blue-600 text-white p-2.5 rounded-xl hover:bg-blue-700 transition-colors">
                                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" /></svg>
                                 </button>
@@ -559,15 +577,18 @@ output "vpc_id" { value = module.vpc.vpc_id }`,
                         </div>
                     ) : (
                         <button
-                            onClick={() => setIsOpen(true)}
-                            className="bg-slate-900 text-white px-5 py-3 rounded-2xl shadow-2xl hover:scale-105 active:scale-95 transition-all group flex items-center gap-3"
+                            onMouseDown={onDragStart}
+                            onClick={() => { if (!dragging.current) setIsOpen(true); }}
+                            className="bg-slate-900 text-white px-5 py-3 rounded-2xl shadow-2xl hover:scale-105 transition-all group flex items-center gap-3 select-none"
+                            style={{ cursor: 'grab' }}
+                            title="Drag to move · Click to open"
                         >
                             <div className="w-7 h-7 rounded-lg bg-white p-0.5 flex-shrink-0 group-hover:rotate-12 transition-transform">
                                 <img src="logo.png" alt="Logo" className="w-full h-full object-contain" onError={(e) => { e.target.style.display = 'none'; e.target.parentNode.innerHTML = '🏛️'; }} />
                             </div>
                             <div className="text-left">
                                 <div className="text-xs font-black uppercase tracking-wider">Ask Assistant</div>
-                                <div className="text-[10px] text-green-400 font-bold uppercase tracking-widest">● Online</div>
+                                <div className="text-[10px] text-green-400 font-bold">● Online · drag to move</div>
                             </div>
                         </button>
                     )}
