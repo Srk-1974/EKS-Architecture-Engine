@@ -13,18 +13,29 @@ st.set_page_config(
 # Hide ALL Streamlit chrome so the iframe is full-viewport
 st.markdown("""
     <style>
-    #MainMenu, footer, header { visibility: hidden; }
-    .block-container {
+    /* Hide top header and footer entirely */
+    header, footer, #MainMenu {
+        visibility: hidden !important;
+        display: none !important;
+    }
+    /* Prevent Streamlit outer page from scrolling */
+    html, body, [data-testid="stAppViewContainer"] {
+        overflow: hidden !important;
         padding: 0 !important;
         margin: 0 !important;
-        max-width: 100% !important;
     }
-    [data-testid="stAppViewContainer"] {
+    /* Remove padding around main container */
+    .block-container, [data-testid="stAppViewBlockContainer"] {
         padding: 0 !important;
+        margin: 0 !important;
+        max-width: 100vw !important;
     }
+    /* Force iframe to exactly screen height */
     iframe {
         border: none !important;
         display: block !important;
+        width: 100vw !important;
+        height: 100vh !important;
     }
     </style>
 """, unsafe_allow_html=True)
